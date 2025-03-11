@@ -8,6 +8,8 @@
 // @grant        none
 // ==/UserScript==
 
+// This was NOT written by AI. I had ChatGPT add comments if people wanna edit it tho.
+
 (function() {
     'use strict';
 
