@@ -1,10 +1,19 @@
 // ==UserScript==
-// @name         QuickEdge 1.2
-// @namespace    http://tampermonkey.net/
-// @version      1.2
-// @description  Skip ahead and change playback speed on Edgenuity videos—even if you haven’t already watched them fully.
-// @author       https://rhw.one
+// @name         QuickEdge 1.3 by RHW
+// @namespace    https://github.com/tf7software/QuickEdge
+// @version      1.3
+// @description  Skip Audio/Video on Edgenuity
+// @author       RHW (https://rhw.one)
 // @match        *://*.edgenuity.com/*
+// @match        *://*.apexvs.com/*
+// @match        *://*.apexlearning.com/*
+// @match        *://*.brainly.com/*
+// @match        *://*.brainly.in/*
+// @match        *://*.brainly.ro/*
+// @match        *://*.brainly.pl/*
+// @match        *://*.brainly.ph/*
+// @match        *://*.il-apps.com/*
+// @match        *://*.learnosity.com/*
 // @grant        none
 // ==/UserScript==
 
@@ -27,6 +36,7 @@
 
     let video;            // reference to the video element
     let allowedTime = 0;  // the furthest time the user is allowed to seek to
+    let autoSkipAudio = false; // flag for auto skipping non-video audio
 
     // Create an overlay control panel with speed and skip/rewind buttons.
     function createControlPanel() {
@@ -80,6 +90,21 @@
         });
         controlPanel.appendChild(rewindButton);
 
+        // Checkbox to auto skip non-video audio.
+        const autoSkipAudioCheckbox = document.createElement('input');
+        autoSkipAudioCheckbox.type = 'checkbox';
+        autoSkipAudioCheckbox.id = 'autoSkipAudioCheckbox';
+        autoSkipAudioCheckbox.style.marginLeft = '10px';
+        autoSkipAudioCheckbox.addEventListener('change', function() {
+            autoSkipAudio = this.checked;
+        });
+        controlPanel.appendChild(autoSkipAudioCheckbox);
+
+        const autoSkipAudioLabel = document.createElement('label');
+        autoSkipAudioLabel.textContent = ' Auto skip non-video audio';
+        autoSkipAudioLabel.htmlFor = 'autoSkipAudioCheckbox';
+        controlPanel.appendChild(autoSkipAudioLabel);
+
         document.body.appendChild(controlPanel);
     }
 
@@ -92,6 +117,21 @@
             }
         });
     }
+
+    // Function to skip all non-video audio if enabled.
+    function skipNonVideoAudio() {
+        if (!autoSkipAudio) return;
+        document.querySelectorAll('audio').forEach(function(audio) {
+            // If the audio is playing and hasn't reached its end, skip it.
+            if (!audio.paused && audio.currentTime < audio.duration) {
+                audio.currentTime = audio.duration;
+                audio.pause();
+            }
+        });
+    }
+
+    // Check periodically for audio elements to skip.
+    setInterval(skipNonVideoAudio, 500);
 
     // Wait for the video element to appear. Use a MutationObserver in case it isn’t present immediately.
     function waitForVideo() {
