@@ -14,6 +14,8 @@
 // @match        *://*.brainly.ph/*
 // @match        *://*.il-apps.com/*
 // @match        *://*.learnosity.com/*
+// @updateURL    https://cdn.jsdelivr.net/gh/tf7software/QuickEdge@raw/refs/heads/main/quickedge.client.js
+// @downloadURL  https://cdn.jsdelivr.net/gh/tf7software/QuickEdge@raw/refs/heads/main/quickedge.client.js
 // @grant        none
 // ==/UserScript==
 
