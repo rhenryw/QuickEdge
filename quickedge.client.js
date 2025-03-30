@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         QuickEdge 1.3 by RHW
+// @name         QuickEdge by RHW
 // @namespace    https://github.com/tf7software/QuickEdge
-// @version      1.3
+// @version      1.4
 // @description  Skip Audio/Video on Edgenuity
 // @author       RHW (https://rhw.one)
 // @match        *://*.edgenuity.com/*
