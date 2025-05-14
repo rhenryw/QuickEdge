@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         QuickEdge by RHW
 // @namespace    https://github.com/tf7software/QuickEdge
-// @version      1.5
-// @description  Skip Audio/Video on Edgenuity + enforce turbo speed toggle
+// @version      1.7
+// @description  Skip Audio/Video on Edgenuity + turbo speed toggle + skip non‑video audio
 // @author       RHW (https://rhw.one)
 // @match        *://*.edgenuity.com/*
 // @match        *://*.apexvs.com/*
@@ -22,7 +22,7 @@
 (function() {
     'use strict';
 
-
+    // fool Edgenuity into thinking everything's been watched
     Object.defineProperty(HTMLMediaElement.prototype, 'played', {
         get: function() {
             return {
@@ -38,47 +38,69 @@
     let allowedTime = 0;
     let autoSkipAudio = false;
     let desiredSpeed = 1;
-    let speedToggleInterval = null;
-    let toggleState = false;
+    let toggleState = false;  // speed toggle: false = 1×, true = desiredSpeed
 
     function createControlPanel() {
-        const controlPanel = document.createElement('div');
-        Object.assign(controlPanel.style, {
-            position: 'fixed', top: '10px', right: '10px',
-            background: 'rgba(0, 0, 0, 0.6)', color: 'white',
-            padding: '10px', borderRadius: '5px', zIndex: '9999',
-            fontFamily: 'Arial, sans-serif'
+        const panel = document.createElement('div');
+        Object.assign(panel.style, {
+            position: 'fixed',
+            top: '10px',
+            right: '10px',
+            background: 'rgba(0,0,0,0.6)',
+            color: 'white',
+            padding: '10px',
+            borderRadius: '5px',
+            zIndex: '9999',
+            fontFamily: 'Arial,sans-serif'
         });
+
 
         const speedLabel = document.createElement('span');
         speedLabel.textContent = 'Speed: ';
-        controlPanel.appendChild(speedLabel);
+        panel.appendChild(speedLabel);
 
         const speedInput = document.createElement('input');
         speedInput.type = 'number';
-        speedInput.value = video.playbackRate;
+        speedInput.value = video.playbackRate.toFixed(1);
         speedInput.step = '0.1';
         speedInput.min = '0.1';
         speedInput.style.width = '50px';
         speedInput.addEventListener('change', () => {
-            clearInterval(speedToggleInterval);
             desiredSpeed = parseFloat(speedInput.value) || 1;
-  
-            toggleState = false;
-            speedToggleInterval = setInterval(() => {
-                video.playbackRate = toggleState
-                    ? desiredSpeed
-                    : Math.max(0.1, desiredSpeed - 1);
-                toggleState = !toggleState;
-            }, 100);
+            if (toggleState) {
+                video.playbackRate = desiredSpeed;
+            }
         });
-        controlPanel.appendChild(speedInput);
-
-        controlPanel.appendChild(document.createTextNode(' '));
+        panel.appendChild(speedInput);
 
 
+        const speedBtn = document.createElement('button');
+        speedBtn.textContent = 'Enable Turbo';
+        speedBtn.style.margin = '0 5px';
+        speedBtn.addEventListener('click', () => {
+            toggleState = !toggleState;
+            if (toggleState) {
+                video.playbackRate = desiredSpeed;
+                speedBtn.textContent = 'Disable Turbo';
+            } else {
+                video.playbackRate = 1;
+                speedBtn.textContent = 'Enable Turbo';
+            }
+        });
+        panel.appendChild(speedBtn);
 
-        document.body.appendChild(controlPanel);
+        const audioBtn = document.createElement('button');
+        audioBtn.textContent = 'Enable Skip Audio';
+        audioBtn.style.marginLeft = '5px';
+        audioBtn.addEventListener('click', () => {
+            autoSkipAudio = !autoSkipAudio;
+            audioBtn.textContent = autoSkipAudio
+                ? 'Disable Skip Audio'
+                : 'Enable Skip Audio';
+        });
+        panel.appendChild(audioBtn);
+
+        document.body.appendChild(panel);
     }
 
     function overrideSeeking() {
@@ -107,13 +129,13 @@
             createControlPanel();
             overrideSeeking();
         } else {
-            const obs = new MutationObserver((m, o) => {
+            const obs = new MutationObserver((mutations, observer) => {
                 video = document.querySelector('video');
                 if (video) {
                     allowedTime = video.currentTime;
                     createControlPanel();
                     overrideSeeking();
-                    o.disconnect();
+                    observer.disconnect();
                 }
             });
             obs.observe(document.body, { childList: true, subtree: true });
