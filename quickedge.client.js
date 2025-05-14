@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         QuickEdge by RHW (Toggle Speed Enforcement)
+// @name         QuickEdge by RHW
 // @namespace    https://github.com/tf7software/QuickEdge
 // @version      1.5
 // @description  Skip Audio/Video on Edgenuity + enforce turbo speed toggle
@@ -22,7 +22,7 @@
 (function() {
     'use strict';
 
-    // Override played property to mark video as watched
+
     Object.defineProperty(HTMLMediaElement.prototype, 'played', {
         get: function() {
             return {
@@ -63,21 +63,20 @@
         speedInput.addEventListener('change', () => {
             clearInterval(speedToggleInterval);
             desiredSpeed = parseFloat(speedInput.value) || 1;
-            // Start toggling between desiredSpeed and desiredSpeed - 1
+  
             toggleState = false;
             speedToggleInterval = setInterval(() => {
                 video.playbackRate = toggleState
                     ? desiredSpeed
                     : Math.max(0.1, desiredSpeed - 1);
                 toggleState = !toggleState;
-            }, 500);
+            }, 100);
         });
         controlPanel.appendChild(speedInput);
 
         controlPanel.appendChild(document.createTextNode(' '));
 
-        // Skip and rewind buttons… (unchanged)
-        // [existing skip/rewind and audio skip code here]
+
 
         document.body.appendChild(controlPanel);
     }
