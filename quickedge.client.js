@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         QuickEdge by RHW
 // @namespace    https://github.com/tf7software/QuickEdge
-// @version      1.7
-// @description  Skip Audio/Video on Edgenuity + turbo speed toggle + skip non‑video audio
+// @version      1.9
+// @description  Skip Audio/Video on Edgenuity + turbo speed pulser + skip non‑video audio
 // @author       RHW (https://rhw.one)
 // @match        *://*.edgenuity.com/*
 // @match        *://*.apexvs.com/*
@@ -22,7 +22,7 @@
 (function() {
     'use strict';
 
-    // fool Edgenuity into thinking everything's been watched
+    // Trick Edgenuity into thinking everything's watched
     Object.defineProperty(HTMLMediaElement.prototype, 'played', {
         get: function() {
             return {
@@ -36,13 +36,14 @@
 
     let video;
     let allowedTime = 0;
-    let autoSkipAudio = false;
-    let desiredSpeed = 1;
-    let toggleState = false;  // speed toggle: false = 1×, true = desiredSpeed
+    let autoSkipAudio = false;       // whether to skip non‑video audio
+    let desiredSpeed = 1;            // target turbo speed
+    let speedToggleInterval = null;  // interval handle for enforcer
+    let turboEnabled = false;        // whether the enforcer is running
 
     function createControlPanel() {
-        const panel = document.createElement('div');
-        Object.assign(panel.style, {
+        const cp = document.createElement('div');
+        Object.assign(cp.style, {
             position: 'fixed',
             top: '10px',
             right: '10px',
@@ -51,56 +52,71 @@
             padding: '10px',
             borderRadius: '5px',
             zIndex: '9999',
-            fontFamily: 'Arial,sans-serif'
+            fontFamily: 'Arial, sans-serif'
         });
 
+ 
+        cp.appendChild(Object.assign(document.createElement('span'), { textContent: 'Speed: ' }));
 
-        const speedLabel = document.createElement('span');
-        speedLabel.textContent = 'Speed: ';
-        panel.appendChild(speedLabel);
-
-        const speedInput = document.createElement('input');
-        speedInput.type = 'number';
-        speedInput.value = video.playbackRate.toFixed(1);
-        speedInput.step = '0.1';
-        speedInput.min = '0.1';
-        speedInput.style.width = '50px';
-        speedInput.addEventListener('change', () => {
-            desiredSpeed = parseFloat(speedInput.value) || 1;
-            if (toggleState) {
-                video.playbackRate = desiredSpeed;
-            }
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.value = video.playbackRate.toFixed(1);
+        inp.step = '0.1';
+        inp.min = '0.1';
+        inp.style.width = '50px';
+        inp.addEventListener('change', () => {
+            desiredSpeed = parseFloat(inp.value) || 1;
+            if (turboEnabled) restartEnforcer();
         });
-        panel.appendChild(speedInput);
+        cp.appendChild(inp);
 
 
-        const speedBtn = document.createElement('button');
-        speedBtn.textContent = 'Enable Turbo';
-        speedBtn.style.margin = '0 5px';
-        speedBtn.addEventListener('click', () => {
-            toggleState = !toggleState;
-            if (toggleState) {
-                video.playbackRate = desiredSpeed;
-                speedBtn.textContent = 'Disable Turbo';
+        const turboBtn = document.createElement('button');
+        turboBtn.textContent = 'Enable Turbo';
+        turboBtn.style.margin = '0 5px';
+        turboBtn.addEventListener('click', () => {
+            turboEnabled = !turboEnabled;
+            turboBtn.textContent = turboEnabled ? 'Disable Turbo' : 'Enable Turbo';
+            if (turboEnabled) {
+                startEnforcer();
             } else {
+                stopEnforcer();
                 video.playbackRate = 1;
-                speedBtn.textContent = 'Enable Turbo';
             }
         });
-        panel.appendChild(speedBtn);
+        cp.appendChild(turboBtn);
+
 
         const audioBtn = document.createElement('button');
         audioBtn.textContent = 'Enable Skip Audio';
         audioBtn.style.marginLeft = '5px';
         audioBtn.addEventListener('click', () => {
             autoSkipAudio = !autoSkipAudio;
-            audioBtn.textContent = autoSkipAudio
-                ? 'Disable Skip Audio'
-                : 'Enable Skip Audio';
+            audioBtn.textContent = autoSkipAudio ? 'Disable Skip Audio' : 'Enable Skip Audio';
         });
-        panel.appendChild(audioBtn);
+        cp.appendChild(audioBtn);
 
-        document.body.appendChild(panel);
+        document.body.appendChild(cp);
+    }
+
+    function startEnforcer() {
+        let toggleState = false;
+        clearInterval(speedToggleInterval);
+        speedToggleInterval = setInterval(() => {
+            video.playbackRate = toggleState
+                ? desiredSpeed
+                : Math.max(0.1, desiredSpeed - 1);
+            toggleState = !toggleState;
+        }, 100);
+    }
+
+    function stopEnforcer() {
+        clearInterval(speedToggleInterval);
+    }
+
+    function restartEnforcer() {
+        stopEnforcer();
+        startEnforcer();
     }
 
     function overrideSeeking() {
@@ -113,10 +129,10 @@
 
     function skipNonVideoAudio() {
         if (!autoSkipAudio) return;
-        document.querySelectorAll('audio').forEach(audio => {
-            if (!audio.paused && audio.currentTime < audio.duration) {
-                audio.currentTime = audio.duration;
-                audio.pause();
+        document.querySelectorAll('audio').forEach(a => {
+            if (!a.paused && a.currentTime < a.duration) {
+                a.currentTime = a.duration;
+                a.pause();
             }
         });
     }
@@ -129,13 +145,13 @@
             createControlPanel();
             overrideSeeking();
         } else {
-            const obs = new MutationObserver((mutations, observer) => {
+            const obs = new MutationObserver((_, o) => {
                 video = document.querySelector('video');
                 if (video) {
                     allowedTime = video.currentTime;
                     createControlPanel();
                     overrideSeeking();
-                    observer.disconnect();
+                    o.disconnect();
                 }
             });
             obs.observe(document.body, { childList: true, subtree: true });
